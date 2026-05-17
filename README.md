@@ -1,5 +1,14 @@
 # Walter Russell Period Table
 
+## Gemini
+
+<https://bquast.github.io/Walter-Russell-Periodic-Table/walter-russell.html>
+
+## Claude
+
+<https://bquast.github.io/Walter-Russell-Periodic-Table/russell_periodic_spire_3d.html>
+
+
 ## Grok Explanation
 [Grok explanation](https://grok.com/share/c2hhcmQtMg_fa58189c-1120-482d-a03e-00b193f06de6):
 
@@ -38,11 +47,3 @@ Russell's chart is therefore not just a list — it is a map of cosmic harmony, 
 Here are visual examples of Russell's spiral octave chart (the classic 1926 version and modern interpretations showing the wave structure):
 
 ![Russell Periodic Table](Russell-periodic-table.png)
-
-## Gemini
-
-<https://bquast.github.io/Walter-Russell-Periodic-Table/walter-russell.html>
-
-## Claude
-
-<https://bquast.github.io/Walter-Russell-Periodic-Table/russell_periodic_spire_3d.html>
