@@ -2,7 +2,11 @@
 
 ## Grok
 
-<https://bquast.github.io/Walter-Russell-Periodic-Table/grok-spiral.html
+<https://bquast.github.io/Walter-Russell-Periodic-Table/grok-spiral.html>
+
+## Kimi
+
+<https://bquast.github.io/Walter-Russell-Periodic-Table/kimi-spiral.html>
 
 ## Gemini
 

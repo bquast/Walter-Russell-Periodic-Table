@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Walter Russell's Spiral Periodic Table - 3D Interactive</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0f; 
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+        #canvas-container { 
+            width: 100vw; 
+            height: 100vh; 
+            position: relative;
+        }
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 10, 15, 0.92);
+            border: 1px solid rgba(100, 100, 150, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 320px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+        #info-panel h1 {
+            font-size: 1.3em;
+            margin-bottom: 8px;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        #info-panel .subtitle {
+            font-size: 0.85em;
+            color: #888;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+        .control-group {
+            margin: 12px 0;
+        }
+        .control-group label {
+            display: block;
+            font-size: 0.8em;
+            color: #aaa;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn {
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            color: #ffd700;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            margin: 3px;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: rgba(255, 215, 0, 0.3);
+            transform: translateY(-1px);
+        }
+        .btn.active {
+            background: rgba(255, 215, 0, 0.5);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+        }
+        #element-detail {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(10, 10, 15, 0.95);
+            border: 1px solid rgba(100, 100, 150, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            width: 280px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: none;
+            border-left: 4px solid #ffd700;
+        }
+        #element-detail .atomic-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #ffd700;
+            line-height: 1;
+        }
+        #element-detail .symbol {
+            font-size: 2em;
+            color: #fff;
+            margin: 5px 0;
+        }
+        #element-detail .name {
+            font-size: 1.2em;
+            color: #ccc;
+            margin-bottom: 10px;
+        }
+        #element-detail .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.9em;
+        }
+        #element-detail .detail-label {
+            color: #888;
+        }
+        #element-detail .detail-value {
+            color: #fff;
+            font-weight: 500;
+        }
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(10, 10, 15, 0.92);
+            border: 1px solid rgba(100, 100, 150, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        .legend h3 {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 0.8em;
+        }
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            margin-right: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            color: #ffd700;
+            z-index: 200;
+        }
+        .octave-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(10, 10, 15, 0.92);
+            border: 1px solid rgba(100, 100, 150, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            text-align: center;
+        }
+        .octave-indicator h3 {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+        .octave-bar {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+        }
+        .octave-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            color: rgba(255,255,255,0.5);
+        }
+        .octave-dot:hover, .octave-dot.active {
+            background: rgba(255, 215, 0, 0.4);
+            border-color: #ffd700;
+            color: #ffd700;
+            transform: scale(1.2);
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <div id="loading">Loading Russell's Universe...</div>
+    <div id="canvas-container"></div>
+
+    <div id="info-panel">
+        <h1>⚛ Walter Russell's Spiral</h1>
+        <div class="subtitle">The Universal One — Octave-Based Periodic Table</div>
+
+        <div class="control-group">
+            <label>View Mode</label>
+            <button class="btn active" onclick="setViewMode('spiral')">Spiral</button>
+            <button class="btn" onclick="setViewMode('octaves')">Octaves</button>
+            <button class="btn" onclick="setViewMode('wave')">Wave</button>
+        </div>
+
+        <div class="control-group">
+            <label>Animation</label>
+            <button class="btn active" onclick="toggleAnimation(true)">On</button>
+            <button class="btn" onclick="toggleAnimation(false)">Off</button>
+        </div>
+
+        <div class="control-group">
+            <label>Energy Flow</label>
+            <button class="btn" onclick="showEnergyFlow('centripetal')">Centripetal ↓</button>
+            <button class="btn" onclick="showEnergyFlow('centrifugal')">Centrifugal ↑</button>
+        </div>
+
+        <div class="control-group">
+            <label>Camera</label>
+            <button class="btn" onclick="resetCamera()">Reset</button>
+            <button class="btn" onclick="toggleAutoRotate()">Auto-Rotate</button>
+        </div>
+
+        <div style="margin-top: 15px; font-size: 0.8em; color: #666; line-height: 1.5;">
+            <strong>Russell's Principle:</strong> Elements spiral through 10 octaves like musical tones, 
+            with inert gases at wave balance points. Matter breathes in (generation) and out (radiation).
+        </div>
+    </div>
+
+    <div id="element-detail">
+        <div class="atomic-number" id="detail-z">1</div>
+        <div class="symbol" id="detail-sym">H</div>
+        <div class="name" id="detail-name">Hydrogen</div>
+        <div class="detail-row">
+            <span class="detail-label">Octave</span>
+            <span class="detail-value" id="detail-octave">1</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Tone</span>
+            <span class="detail-value" id="detail-tone">1</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Type</span>
+            <span class="detail-value" id="detail-type">Gas</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Balance Point</span>
+            <span class="detail-value" id="detail-balance">No</span>
+        </div>
+        <div class="detail-row" id="detail-conceptual-row" style="display:none;">
+            <span class="detail-label">Concept</span>
+            <span class="detail-value" id="detail-concept"></span>
+        </div>
+    </div>
+
+    <div class="legend">
+        <h3>Element Families</h3>
+        <div class="legend-item"><div class="legend-color" style="background:#FF6B6B"></div>Alkali Metals</div>
+        <div class="legend-item"><div class="legend-color" style="background:#FF9F43"></div>Alkaline Earth</div>
+        <div class="legend-item"><div class="legend-color" style="background:#54A0FF"></div>Transition Metals</div>
+        <div class="legend-item"><div class="legend-color" style="background:#5F27CD"></div>Post-Transition</div>
+        <div class="legend-item"><div class="legend-color" style="background:#1DD1A1"></div>Metalloids</div>
+        <div class="legend-item"><div class="legend-color" style="background:#FECA57"></div>Nonmetals</div>
+        <div class="legend-item"><div class="legend-color" style="background:#FF9FF3"></div>Halogens</div>
+        <div class="legend-item"><div class="legend-color" style="background:#48DBFB"></div>Noble Gases</div>
+        <div class="legend-item"><div class="legend-color" style="background:#A29BFE"></div>Lanthanides</div>
+        <div class="legend-item"><div class="legend-color" style="background:#FD79A8"></div>Actinides</div>
+    </div>
+
+    <div class="octave-indicator">
+        <h3>Octaves</h3>
+        <div class="octave-bar">
+            <div class="octave-dot active" onclick="highlightOctave(0)" title="Alphanon">α</div>
+            <div class="octave-dot" onclick="highlightOctave(1)">1</div>
+            <div class="octave-dot" onclick="highlightOctave(2)">2</div>
+            <div class="octave-dot" onclick="highlightOctave(3)">3</div>
+            <div class="octave-dot" onclick="highlightOctave(4)">4</div>
+            <div class="octave-dot" onclick="highlightOctave(5)">5</div>
+            <div class="octave-dot" onclick="highlightOctave(6)">6</div>
+            <div class="octave-dot" onclick="highlightOctave(7)">7</div>
+            <div class="octave-dot" onclick="highlightOctave(10)" title="Omeganon">Ω</div>
+        </div>
+    </div>
+
+    <script>
+        // Walter Russell's Element Data
+        const elements = [
+            // Master Elements
+            {z: 0, sym: "α", name: "Alphanon", octave: 0, tone: 0, type: "master", balance: true, conceptual: true, desc: "The still point - spiritual boundary of motion"},
+            {z: -1, sym: "β", name: "Betanon", octave: -1, tone: 0, type: "master", balance: true, conceptual: true, desc: "The precursor - spiritual boundary of generation"},
+
+            // Octave 1
+            {z: 1, sym: "H", name: "Hydrogen", octave: 1, tone: 1, type: "gas", balance: false},
+            {z: 2, sym: "He", name: "Helium", octave: 1, tone: 4, type: "noble", balance: true},
+
+            // Octave 2
+            {z: 3, sym: "Li", name: "Lithium", octave: 2, tone: 1, type: "alkali", balance: false},
+            {z: 4, sym: "Be", name: "Beryllium", octave: 2, tone: 2, type: "alkaline", balance: false},
+            {z: 5, sym: "B", name: "Boron", octave: 2, tone: 3, type: "metalloid", balance: false},
+            {z: 6, sym: "C", name: "Carbon", octave: 2, tone: 4, type: "nonmetal", balance: false},
+            {z: 7, sym: "N", name: "Nitrogen", octave: 2, tone: 5, type: "nonmetal", balance: false},
+            {z: 8, sym: "O", name: "Oxygen", octave: 2, tone: 6, type: "nonmetal", balance: false},
+            {z: 9, sym: "F", name: "Fluorine", octave: 2, tone: 7, type: "halogen", balance: false},
+            {z: 10, sym: "Ne", name: "Neon", octave: 2, tone: 8, type: "noble", balance: true},
+
+            // Octave 3
+            {z: 11, sym: "Na", name: "Sodium", octave: 3, tone: 1, type: "alkali", balance: false},
+            {z: 12, sym: "Mg", name: "Magnesium", octave: 3, tone: 2, type: "alkaline", balance: false},
+            {z: 13, sym: "Al", name: "Aluminum", octave: 3, tone: 3, type: "post-transition", balance: false},
+            {z: 14, sym: "Si", name: "Silicon", octave: 3, tone: 4, type: "metalloid", balance: false},
+            {z: 15, sym: "P", name: "Phosphorus", octave: 3, tone: 5, type: "nonmetal", balance: false},
+            {z: 16, sym: "S", name: "Sulfur", octave: 3, tone: 6, type: "nonmetal", balance: false},
+            {z: 17, sym: "Cl", name: "Chlorine", octave: 3, tone: 7, type: "halogen", balance: false},
+            {z: 18, sym: "Ar", name: "Argon", octave: 3, tone: 8, type: "noble", balance: true},
+
+            // Octave 4
+            {z: 19, sym: "K", name: "Potassium", octave: 4, tone: 1, type: "alkali", balance: false},
+            {z: 20, sym: "Ca", name: "Calcium", octave: 4, tone: 2, type: "alkaline", balance: false},
+            {z: 21, sym: "Sc", name: "Scandium", octave: 4, tone: 2.5, type: "transition", balance: false},
+            {z: 22, sym: "Ti", name: "Titanium", octave: 4, tone: 2.6, type: "transition", balance: false},
+            {z: 23, sym: "V", name: "Vanadium", octave: 4, tone: 2.7, type: "transition", balance: false},
+            {z: 24, sym: "Cr", name: "Chromium", octave: 4, tone: 2.8, type: "transition", balance: false},
+            {z: 25, sym: "Mn", name: "Manganese", octave: 4, tone: 2.9, type: "transition", balance: false},
+            {z: 26, sym: "Fe", name: "Iron", octave: 4, tone: 3.0, type: "transition", balance: false},
+            {z: 27, sym: "Co", name: "Cobalt", octave: 4, tone: 3.1, type: "transition", balance: false},
+            {z: 28, sym: "Ni", name: "Nickel", octave: 4, tone: 3.2, type: "transition", balance: false},
+            {z: 29, sym: "Cu", name: "Copper", octave: 4, tone: 3.3, type: "transition", balance: false},
+            {z: 30, sym: "Zn", name: "Zinc", octave: 4, tone: 3.4, type: "transition", balance: false},
+            {z: 31, sym: "Ga", name: "Gallium", octave: 4, tone: 3, type: "post-transition", balance: false},
+            {z: 32, sym: "Ge", name: "Germanium", octave: 4, tone: 4, type: "metalloid", balance: false},
+            {z: 33, sym: "As", name: "Arsenic", octave: 4, tone: 5, type: "metalloid", balance: false},
+            {z: 34, sym: "Se", name: "Selenium", octave: 4, tone: 6, type: "nonmetal", balance: false},
+            {z: 35, sym: "Br", name: "Bromine", octave: 4, tone: 7, type: "halogen", balance: false},
+            {z: 36, sym: "Kr", name: "Krypton", octave: 4, tone: 8, type: "noble", balance: true},
+
+            // Octave 5
+            {z: 37, sym: "Rb", name: "Rubidium", octave: 5, tone: 1, type: "alkali", balance: false},
+            {z: 38, sym: "Sr", name: "Strontium", octave: 5, tone: 2, type: "alkaline", balance: false},
+            {z: 39, sym: "Y", name: "Yttrium", octave: 5, tone: 2.5, type: "transition", balance: false},
+            {z: 40, sym: "Zr", name: "Zirconium", octave: 5, tone: 2.6, type: "transition", balance: false},
+            {z: 41, sym: "Nb", name: "Niobium", octave: 5, tone: 2.7, type: "transition", balance: false},
+            {z: 42, sym: "Mo", name: "Molybdenum", octave: 5, tone: 2.8, type: "transition", balance: false},
+            {z: 43, sym: "Tc", name: "Technetium", octave: 5, tone: 2.9, type: "transition", balance: false, predicted: true},
+            {z: 44, sym: "Ru", name: "Ruthenium", octave: 5, tone: 3.0, type: "transition", balance: false},
+            {z: 45, sym: "Rh", name: "Rhodium", octave: 5, tone: 3.1, type: "transition", balance: false},
+            {z: 46, sym: "Pd", name: "Palladium", octave: 5, tone: 3.2, type: "transition", balance: false},
+            {z: 47, sym: "Ag", name: "Silver", octave: 5, tone: 3.3, type: "transition", balance: false},
+            {z: 48, sym: "Cd", name: "Cadmium", octave: 5, tone: 3.4, type: "transition", balance: false},
+            {z: 49, sym: "In", name: "Indium", octave: 5, tone: 3, type: "post-transition", balance: false},
+            {z: 50, sym: "Sn", name: "Tin", octave: 5, tone: 4, type: "post-transition", balance: false},
+            {z: 51, sym: "Sb", name: "Antimony", octave: 5, tone: 5, type: "metalloid", balance: false},
+            {z: 52, sym: "Te", name: "Tellurium", octave: 5, tone: 6, type: "metalloid", balance: false},
+            {z: 53, sym: "I", name: "Iodine", octave: 5, tone: 7, type: "halogen", balance: false},
+            {z: 54, sym: "Xe", name: "Xenon", octave: 5, tone: 8, type: "noble", balance: true},
+
+            // Octave 6
+            {z: 55, sym: "Cs", name: "Cesium", octave: 6, tone: 1, type: "alkali", balance: false},
+            {z: 56, sym: "Ba", name: "Barium", octave: 6, tone: 2, type: "alkaline", balance: false},
+            {z: 57, sym: "La", name: "Lanthanum", octave: 6, tone: 2.3, type: "lanthanide", balance: false},
+            {z: 58, sym: "Ce", name: "Cerium", octave: 6, tone: 2.35, type: "lanthanide", balance: false},
+            {z: 59, sym: "Pr", name: "Praseodymium", octave: 6, tone: 2.4, type: "lanthanide", balance: false},
+            {z: 60, sym: "Nd", name: "Neodymium", octave: 6, tone: 2.45, type: "lanthanide", balance: false},
+            {z: 61, sym: "Pm", name: "Promethium", octave: 6, tone: 2.5, type: "lanthanide", balance: false, predicted: true},
+            {z: 62, sym: "Sm", name: "Samarium", octave: 6, tone: 2.55, type: "lanthanide", balance: false},
+            {z: 63, sym: "Eu", name: "Europium", octave: 6, tone: 2.6, type: "lanthanide", balance: false},
+            {z: 64, sym: "Gd", name: "Gadolinium", octave: 6, tone: 2.65, type: "lanthanide", balance: false},
+            {z: 65, sym: "Tb", name: "Terbium", octave: 6, tone: 2.7, type: "lanthanide", balance: false},
+            {z: 66, sym: "Dy", name: "Dysprosium", octave: 6, tone: 2.75, type: "lanthanide", balance: false},
+            {z: 67, sym: "Ho", name: "Holmium", octave: 6, tone: 2.8, type: "lanthanide", balance: false},
+            {z: 68, sym: "Er", name: "Erbium", octave: 6, tone: 2.85, type: "lanthanide", balance: false},
+            {z: 69, sym: "Tm", name: "Thulium", octave: 6, tone: 2.9, type: "lanthanide", balance: false},
+            {z: 70, sym: "Yb", name: "Ytterbium", octave: 6, tone: 2.95, type: "lanthanide", balance: false},
+            {z: 71, sym: "Lu", name: "Lutetium", octave: 6, tone: 3.0, type: "lanthanide", balance: false},
+            {z: 72, sym: "Hf", name: "Hafnium", octave: 6, tone: 3.1, type: "transition", balance: false},
+            {z: 73, sym: "Ta", name: "Tantalum", octave: 6, tone: 3.2, type: "transition", balance: false},
+            {z: 74, sym: "W", name: "Tungsten", octave: 6, tone: 3.3, type: "transition", balance: false},
+            {z: 75, sym: "Re", name: "Rhenium", octave: 6, tone: 3.4, type: "transition", balance: false},
+            {z: 76, sym: "Os", name: "Osmium", octave: 6, tone: 3.5, type: "transition", balance: false},
+            {z: 77, sym: "Ir", name: "Iridium", octave: 6, tone: 3.6, type: "transition", balance: false},
+            {z: 78, sym: "Pt", name: "Platinum", octave: 6, tone: 3.7, type: "transition", balance: false},
+            {z: 79, sym: "Au", name: "Gold", octave: 6, tone: 3.8, type: "transition", balance: false},
+            {z: 80, sym: "Hg", name: "Mercury", octave: 6, tone: 3.9, type: "transition", balance: false},
+            {z: 81, sym: "Tl", name: "Thallium", octave: 6, tone: 4, type: "post-transition", balance: false},
+            {z: 82, sym: "Pb", name: "Lead", octave: 6, tone: 5, type: "post-transition", balance: false},
+            {z: 83, sym: "Bi", name: "Bismuth", octave: 6, tone: 6, type: "post-transition", balance: false},
+            {z: 84, sym: "Po", name: "Polonium", octave: 6, tone: 7, type: "metalloid", balance: false},
+            {z: 85, sym: "At", name: "Astatine", octave: 6, tone: 7.5, type: "halogen", balance: false},
+            {z: 86, sym: "Rn", name: "Radon", octave: 6, tone: 8, type: "noble", balance: true},
+
+            // Octave 7
+            {z: 87, sym: "Fr", name: "Francium", octave: 7, tone: 1, type: "alkali", balance: false},
+            {z: 88, sym: "Ra", name: "Radium", octave: 7, tone: 2, type: "alkaline", balance: false},
+            {z: 89, sym: "Ac", name: "Actinium", octave: 7, tone: 2.3, type: "actinide", balance: false},
+            {z: 90, sym: "Th", name: "Thorium", octave: 7, tone: 2.35, type: "actinide", balance: false},
+            {z: 91, sym: "Pa", name: "Protactinium", octave: 7, tone: 2.4, type: "actinide", balance: false},
+            {z: 92, sym: "U", name: "Uranium", octave: 7, tone: 2.45, type: "actinide", balance: false},
+            {z: 93, sym: "Np", name: "Neptunium", octave: 7, tone: 2.5, type: "actinide", balance: false},
+            {z: 94, sym: "Pu", name: "Plutonium", octave: 7, tone: 2.55, type: "actinide", balance: false},
+            {z: 95, sym: "Am", name: "Americium", octave: 7, tone: 2.6, type: "actinide", balance: false},
+            {z: 96, sym: "Cm", name: "Curium", octave: 7, tone: 2.65, type: "actinide", balance: false},
+            {z: 97, sym: "Bk", name: "Berkelium", octave: 7, tone: 2.7, type: "actinide", balance: false},
+            {z: 98, sym: "Cf", name: "Californium", octave: 7, tone: 2.75, type: "actinide", balance: false},
+            {z: 99, sym: "Es", name: "Einsteinium", octave: 7, tone: 2.8, type: "actinide", balance: false},
+            {z: 100, sym: "Fm", name: "Fermium", octave: 7, tone: 2.85, type: "actinide", balance: false},
+            {z: 101, sym: "Md", name: "Mendelevium", octave: 7, tone: 2.9, type: "actinide", balance: false},
+            {z: 102, sym: "No", name: "Nobelium", octave: 7, tone: 2.95, type: "actinide", balance: false},
+            {z: 103, sym: "Lr", name: "Lawrencium", octave: 7, tone: 3.0, type: "actinide", balance: false},
+            {z: 104, sym: "Rf", name: "Rutherfordium", octave: 7, tone: 3.5, type: "transition", balance: false},
+            {z: 105, sym: "Db", name: "Dubnium", octave: 7, tone: 3.6, type: "transition", balance: false},
+            {z: 106, sym: "Sg", name: "Seaborgium", octave: 7, tone: 3.7, type: "transition", balance: false},
+            {z: 107, sym: "Bh", name: "Bohrium", octave: 7, tone: 3.8, type: "transition", balance: false},
+            {z: 108, sym: "Hs", name: "Hassium", octave: 7, tone: 3.9, type: "transition", balance: false},
+            {z: 109, sym: "Mt", name: "Meitnerium", octave: 7, tone: 4.0, type: "transition", balance: false},
+            {z: 110, sym: "Ds", name: "Darmstadtium", octave: 7, tone: 4.1, type: "transition", balance: false},
+            {z: 111, sym: "Rg", name: "Roentgenium", octave: 7, tone: 4.2, type: "transition", balance: false},
+            {z: 112, sym: "Cn", name: "Copernicium", octave: 7, tone: 4.3, type: "transition", balance: false},
+            {z: 113, sym: "Nh", name: "Nihonium", octave: 7, tone: 4.4, type: "post-transition", balance: false},
+            {z: 114, sym: "Fl", name: "Flerovium", octave: 7, tone: 4.5, type: "post-transition", balance: false},
+            {z: 115, sym: "Mc", name: "Moscovium", octave: 7, tone: 4.6, type: "post-transition", balance: false},
+            {z: 116, sym: "Lv", name: "Livermorium", octave: 7, tone: 4.7, type: "post-transition", balance: false},
+            {z: 117, sym: "Ts", name: "Tennessine", octave: 7, tone: 4.8, type: "halogen", balance: false},
+            {z: 118, sym: "Og", name: "Oganesson", octave: 7, tone: 8, type: "noble", balance: true},
+
+            // Omeganon
+            {z: 119, sym: "Ω", name: "Omeganon", octave: 10, tone: 0, type: "master", balance: true, conceptual: true, desc: "The completion - spiritual boundary of stillness"}
+        ];
+
+        const typeColors = {
+            "alkali": 0xFF6B6B,
+            "alkaline": 0xFF9F43,
+            "transition": 0x54A0FF,
+            "post-transition": 0x5F27CD,
+            "metalloid": 0x1DD1A1,
+            "nonmetal": 0xFECA57,
+            "halogen": 0xFF9FF3,
+            "noble": 0x48DBFB,
+            "lanthanide": 0xA29BFE,
+            "actinide": 0xFD79A8,
+            "gas": 0xFDCB6E,
+            "master": 0xFFFFFF
+        };
+
+        // Three.js Setup
+        let scene, camera, renderer, controls;
+        let elementMeshes = [];
+        let connectionLines = [];
+        let energyParticles = [];
+        let animationId;
+        let isAnimating = true;
+        let autoRotate = false;
+        let currentMode = 'spiral';
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let hoveredElement = null;
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0a0a0f, 0.008);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(30, 25, 40);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 10;
+            controls.maxDistance = 100;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffd700, 1, 100);
+            pointLight.position.set(0, 20, 0);
+            pointLight.castShadow = true;
+            scene.add(pointLight);
+
+            const pointLight2 = new THREE.PointLight(0x48DBFB, 0.8, 100);
+            pointLight2.position.set(0, -20, 0);
+            scene.add(pointLight2);
+
+            // Create elements
+            createElements();
+            createConnections();
+            createOctaveRings();
+            createEnergyField();
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('click', onClick);
+
+            // Hide loading
+            document.getElementById('loading').style.display = 'none';
+
+            // Start animation
+            animate();
+        }
+
+        function getSpiralPosition(element, time = 0) {
+            const octave = element.octave;
+            const tone = element.tone;
+
+            // Russell's spiral: each octave is a full turn
+            // Radius decreases as we go inward (heavier elements at center)
+            // But we invert for visualization: lighter outside, heavier inside
+
+            let radius, angle, height;
+
+            if (element.conceptual) {
+                // Master elements at center or extremes
+                if (element.sym === "α") {
+                    radius = 0.5;
+                    angle = 0;
+                    height = 15;
+                } else if (element.sym === "β") {
+                    radius = 0.5;
+                    angle = Math.PI;
+                    height = 18;
+                } else {
+                    radius = 0.5;
+                    angle = 0;
+                    height = -15;
+                }
+            } else {
+                // Normal elements
+                const octaveBase = octave;
+                const toneProgress = tone / 8;
+
+                // Spiral parameters
+                const maxRadius = 25;
+                const minRadius = 3;
+                const spiralTightness = 2.5;
+
+                // Calculate position based on mode
+                if (currentMode === 'spiral') {
+                    // Classic spiral: radius decreases, angle increases
+                    const totalProgress = (octaveBase - 1 + toneProgress) / 8;
+                    radius = maxRadius - (totalProgress * (maxRadius - minRadius));
+                    angle = totalProgress * Math.PI * 2 * spiralTightness;
+                    height = Math.sin(toneProgress * Math.PI) * 3 + (octaveBase - 4) * 2;
+                } else if (currentMode === 'octaves') {
+                    // Octave view: elements in rings by octave
+                    radius = maxRadius - ((octaveBase - 1) / 7) * (maxRadius - minRadius);
+                    angle = (tone / 8) * Math.PI * 2;
+                    height = 0;
+                } else if (currentMode === 'wave') {
+                    // Wave view: sine wave along spiral
+                    const totalProgress = (octaveBase - 1 + toneProgress) / 8;
+                    radius = maxRadius - (totalProgress * (maxRadius - minRadius));
+                    angle = totalProgress * Math.PI * 2;
+                    height = Math.sin(totalProgress * Math.PI * 8) * 8;
+                }
+            }
+
+            // Add subtle animation
+            if (isAnimating && !element.conceptual) {
+                height += Math.sin(time * 0.001 + element.z * 0.1) * 0.5;
+            }
+
+            const x = radius * Math.cos(angle);
+            const z = radius * Math.sin(angle);
+
+            return { x, y: height, z, radius, angle };
+        }
+
+        function createElements() {
+            elements.forEach((element, index) => {
+                const pos = getSpiralPosition(element);
+
+                // Size based on atomic number (larger for master elements)
+                let size;
+                if (element.conceptual) {
+                    size = 1.5;
+                } else if (element.balance) {
+                    size = 1.2;
+                } else {
+                    size = 0.6 + (element.z / 118) * 0.4;
+                }
+
+                // Geometry
+                const geometry = new THREE.SphereGeometry(size, 32, 32);
+
+                // Material
+                const color = typeColors[element.type] || 0x888888;
+                const material = new THREE.MeshPhysicalMaterial({
+                    color: color,
+                    metalness: 0.3,
+                    roughness: 0.4,
+                    emissive: color,
+                    emissiveIntensity: element.balance ? 0.4 : 0.1,
+                    transparent: true,
+                    opacity: element.predicted ? 0.6 : 0.9
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(pos.x, pos.y, pos.z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.userData = { element: element, originalScale: size };
+
+                // Glow for noble gases and master elements
+                if (element.balance || element.conceptual) {
+                    const glowGeometry = new THREE.SphereGeometry(size * 1.5, 16, 16);
+                    const glowMaterial = new THREE.MeshBasicMaterial({
+                        color: color,
+                        transparent: true,
+                        opacity: 0.15
+                    });
+                    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                    mesh.add(glow);
+                }
+
+                // Label
+                if (size > 0.8) {
+                    // Create canvas texture for label
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 128;
+                    canvas.height = 128;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                    ctx.beginPath();
+                    ctx.arc(64, 64, 60, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 48px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(element.sym, 64, 64);
+
+                    const texture = new THREE.CanvasTexture(canvas);
+                    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                    const sprite = new THREE.Sprite(spriteMaterial);
+                    sprite.scale.set(size * 3, size * 3, 1);
+                    sprite.position.y = size * 2;
+                    mesh.add(sprite);
+                }
+
+                scene.add(mesh);
+                elementMeshes.push(mesh);
+            });
+        }
+
+        function createConnections() {
+            // Connect elements in sequence
+            const material = new THREE.LineBasicMaterial({
+                color: 0x444466,
+                transparent: true,
+                opacity: 0.3
+            });
+
+            for (let i = 0; i < elementMeshes.length - 1; i++) {
+                const current = elementMeshes[i];
+                const next = elementMeshes[i + 1];
+
+                // Skip connections between non-sequential elements
+                if (Math.abs(current.userData.element.z - next.userData.element.z) > 1) continue;
+
+                const points = [current.position.clone(), next.position.clone()];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, material);
+                scene.add(line);
+                connectionLines.push(line);
+            }
+
+            // Connect same tones across octaves (radial spokes)
+            const toneGroups = {};
+            elementMeshes.forEach(mesh => {
+                const el = mesh.userData.element;
+                if (!el.conceptual) {
+                    const toneKey = Math.round(el.tone);
+                    if (!toneGroups[toneKey]) toneGroups[toneKey] = [];
+                    toneGroups[toneKey].push(mesh);
+                }
+            });
+
+            const spokeMaterial = new THREE.LineBasicMaterial({
+                color: 0x333355,
+                transparent: true,
+                opacity: 0.15
+            });
+
+            Object.values(toneGroups).forEach(group => {
+                if (group.length > 1) {
+                    const points = group.map(m => m.position.clone());
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(geometry, spokeMaterial);
+                    scene.add(line);
+                    connectionLines.push(line);
+                }
+            });
+        }
+
+        function createOctaveRings() {
+            // Create rings for each octave
+            const ringMaterial = new THREE.LineBasicMaterial({
+                color: 0x222244,
+                transparent: true,
+                opacity: 0.2
+            });
+
+            for (let octave = 1; octave <= 7; octave++) {
+                const radius = 25 - ((octave - 1) / 7) * 22;
+                const geometry = new THREE.RingGeometry(radius - 0.1, radius + 0.1, 64);
+                const ring = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+                    color: 0x222244,
+                    transparent: true,
+                    opacity: 0.1,
+                    side: THREE.DoubleSide
+                }));
+                ring.rotation.x = Math.PI / 2;
+                scene.add(ring);
+            }
+        }
+
+        function createEnergyField() {
+            // Create particle system for energy flow visualization
+            const particleCount = 200;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 50;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 40;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const material = new THREE.PointsMaterial({
+                color: 0xffd700,
+                size: 0.3,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
+            });
+
+            const particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+            energyParticles.push(particles);
+        }
+
+        function updatePositions(time) {
+            elementMeshes.forEach(mesh => {
+                const element = mesh.userData.element;
+                const pos = getSpiralPosition(element, time);
+
+                mesh.position.x += (pos.x - mesh.position.x) * 0.05;
+                mesh.position.y += (pos.y - mesh.position.y) * 0.05;
+                mesh.position.z += (pos.z - mesh.position.z) * 0.05;
+            });
+
+            // Update connections
+            let lineIndex = 0;
+            for (let i = 0; i < elementMeshes.length - 1; i++) {
+                const current = elementMeshes[i];
+                const next = elementMeshes[i + 1];
+
+                if (Math.abs(current.userData.element.z - next.userData.element.z) > 1) continue;
+
+                if (lineIndex < connectionLines.length) {
+                    const positions = connectionLines[lineIndex].geometry.attributes.position.array;
+                    positions[0] = current.position.x;
+                    positions[1] = current.position.y;
+                    positions[2] = current.position.z;
+                    positions[3] = next.position.x;
+                    positions[4] = next.position.y;
+                    positions[5] = next.position.z;
+                    connectionLines[lineIndex].geometry.attributes.position.needsUpdate = true;
+                    lineIndex++;
+                }
+            }
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            const time = Date.now();
+
+            if (isAnimating) {
+                updatePositions(time);
+            }
+
+            // Animate energy particles
+            energyParticles.forEach(particles => {
+                const positions = particles.geometry.attributes.position.array;
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i + 1] += Math.sin(time * 0.001 + i) * 0.02;
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+                particles.rotation.y += 0.001;
+            });
+
+            // Auto-rotate
+            if (autoRotate) {
+                scene.rotation.y += 0.002;
+            }
+
+            // Pulse noble gases
+            elementMeshes.forEach(mesh => {
+                if (mesh.userData.element.balance) {
+                    const scale = mesh.userData.originalScale * (1 + Math.sin(time * 0.002) * 0.1);
+                    mesh.scale.set(scale, scale, scale);
+                }
+            });
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(elementMeshes);
+
+            if (intersects.length > 0) {
+                const mesh = intersects[0].object;
+                if (hoveredElement !== mesh) {
+                    // Reset previous
+                    if (hoveredElement) {
+                        gsap.to(hoveredElement.scale, {
+                            x: hoveredElement.userData.originalScale,
+                            y: hoveredElement.userData.originalScale,
+                            z: hoveredElement.userData.originalScale,
+                            duration: 0.3
+                        });
+                    }
+
+                    hoveredElement = mesh;
+                    const scale = mesh.userData.originalScale * 1.5;
+                    gsap.to(mesh.scale, { x: scale, y: scale, z: scale, duration: 0.3 });
+
+                    document.body.style.cursor = 'pointer';
+                }
+            } else {
+                if (hoveredElement) {
+                    gsap.to(hoveredElement.scale, {
+                        x: hoveredElement.userData.originalScale,
+                        y: hoveredElement.userData.originalScale,
+                        z: hoveredElement.userData.originalScale,
+                        duration: 0.3
+                    });
+                    hoveredElement = null;
+                    document.body.style.cursor = 'default';
+                }
+            }
+        }
+
+        function onClick(event) {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(elementMeshes);
+
+            if (intersects.length > 0) {
+                const element = intersects[0].object.userData.element;
+                showElementDetail(element);
+            } else {
+                hideElementDetail();
+            }
+        }
+
+        function showElementDetail(element) {
+            const panel = document.getElementById('element-detail');
+            document.getElementById('detail-z').textContent = element.z;
+            document.getElementById('detail-sym').textContent = element.sym;
+            document.getElementById('detail-name').textContent = element.name;
+            document.getElementById('detail-octave').textContent = element.octave;
+            document.getElementById('detail-tone').textContent = element.tone;
+            document.getElementById('detail-type').textContent = element.type.charAt(0).toUpperCase() + element.type.slice(1);
+            document.getElementById('detail-balance').textContent = element.balance ? 'Yes (Inert Gas)' : 'No';
+
+            const conceptRow = document.getElementById('detail-conceptual-row');
+            if (element.conceptual) {
+                conceptRow.style.display = 'flex';
+                document.getElementById('detail-concept').textContent = element.desc;
+            } else {
+                conceptRow.style.display = 'none';
+            }
+
+            panel.style.display = 'block';
+            gsap.fromTo(panel, { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.3 });
+        }
+
+        function hideElementDetail() {
+            const panel = document.getElementById('element-detail');
+            gsap.to(panel, { opacity: 0, x: 20, duration: 0.2, onComplete: () => { panel.style.display = 'none'; } });
+        }
+
+        // Control functions
+        function setViewMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.control-group .btn').forEach(btn => {
+                if (btn.textContent.toLowerCase().includes(mode)) {
+                    btn.classList.add('active');
+                } else if (['spiral', 'octaves', 'wave'].some(m => btn.textContent.toLowerCase().includes(m))) {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        function toggleAnimation(state) {
+            isAnimating = state;
+            document.querySelectorAll('.control-group .btn').forEach(btn => {
+                if (btn.textContent === 'On' || btn.textContent === 'Off') {
+                    btn.classList.toggle('active', (state && btn.textContent === 'On') || (!state && btn.textContent === 'Off'));
+                }
+            });
+        }
+
+        function showEnergyFlow(direction) {
+            // Visualize centripetal/centrifugal flow
+            const color = direction === 'centripetal' ? 0xff6b6b : 0x48dbfb;
+
+            energyParticles.forEach(particles => {
+                particles.material.color.setHex(color);
+            });
+
+            // Create flow arrows
+            const arrowCount = 20;
+            for (let i = 0; i < arrowCount; i++) {
+                const angle = (i / arrowCount) * Math.PI * 2;
+                const radius = 15;
+                const x = radius * Math.cos(angle);
+                const z = radius * Math.sin(angle);
+
+                const dir = new THREE.Vector3(
+                    direction === 'centripetal' ? -x : x,
+                    0,
+                    direction === 'centripetal' ? -z : z
+                ).normalize();
+
+                const origin = new THREE.Vector3(x, (Math.random() - 0.5) * 20, z);
+                const length = 3;
+                const hex = color;
+
+                const arrowHelper = new THREE.ArrowHelper(dir, origin, length, hex, 1, 0.5);
+                scene.add(arrowHelper);
+
+                // Animate and remove
+                gsap.to(arrowHelper.position, {
+                    x: direction === 'centripetal' ? 0 : x * 2,
+                    z: direction === 'centripetal' ? 0 : z * 2,
+                    duration: 2,
+                    ease: "power2.in",
+                    onComplete: () => scene.remove(arrowHelper)
+                });
+            }
+        }
+
+        function resetCamera() {
+            gsap.to(camera.position, { x: 30, y: 25, z: 40, duration: 1.5, ease: "power2.inOut" });
+            gsap.to(controls.target, { x: 0, y: 0, z: 0, duration: 1.5, ease: "power2.inOut" });
+            autoRotate = false;
+        }
+
+        function toggleAutoRotate() {
+            autoRotate = !autoRotate;
+            event.target.classList.toggle('active', autoRotate);
+        }
+
+        function highlightOctave(octave) {
+            // Highlight elements in selected octave
+            elementMeshes.forEach(mesh => {
+                const el = mesh.userData.element;
+                if (el.octave === octave || (octave === 0 && el.conceptual && el.sym === 'α') || (octave === 10 && el.conceptual && el.sym === 'Ω')) {
+                    gsap.to(mesh.material, { emissiveIntensity: 0.8, duration: 0.3 });
+                    mesh.material.opacity = 1;
+                } else {
+                    gsap.to(mesh.material, { emissiveIntensity: 0.05, duration: 0.3 });
+                    mesh.material.opacity = 0.3;
+                }
+            });
+
+            // Update octave dots
+            document.querySelectorAll('.octave-dot').forEach((dot, i) => {
+                const dotOctave = i === 0 ? 0 : i === 8 ? 10 : i;
+                dot.classList.toggle('active', dotOctave === octave);
+            });
+
+            // Reset after 3 seconds
+            setTimeout(() => {
+                elementMeshes.forEach(mesh => {
+                    gsap.to(mesh.material, { 
+                        emissiveIntensity: mesh.userData.element.balance ? 0.4 : 0.1, 
+                        duration: 0.5 
+                    });
+                    mesh.material.opacity = mesh.userData.element.predicted ? 0.6 : 0.9;
+                });
+                document.querySelectorAll('.octave-dot').forEach(dot => dot.classList.remove('active'));
+            }, 3000);
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
