@@ -8,6 +8,10 @@
 
 <https://bquast.github.io/Walter-Russell-Periodic-Table/kimi-spiral.html>
 
+## GPT
+
+<https://bquast.github.io/Walter-Russell-Periodic-Table/gpt5.5-spiral.html>
+
 ## Gemini
 
 <https://bquast.github.io/Walter-Russell-Periodic-Table/walter-russell.html>

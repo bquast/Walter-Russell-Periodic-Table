@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Walter Russell Spiral Periodic Table</title>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #050510;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    #info {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      background: rgba(0,0,0,0.55);
+      padding: 12px;
+      border-radius: 10px;
+      max-width: 320px;
+      line-height: 1.4;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    .note {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="info">
+  <h2>Walter Russell Spiral Periodic Table</h2>
+  <p>
+    Interactive 3D interpretation inspired by Walter Russell’s spiral
+    arrangement of elements.
+  </p>
+  <ul>
+    <li>Drag = rotate</li>
+    <li>Scroll = zoom</li>
+    <li>Hover = highlight element</li>
+  </ul>
+
+  <div class="note">
+    This is a visual/conceptual demo, not a scientific model.
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050510);
+
+const camera = new THREE.PerspectiveCamera(
+  60,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  2000
+);
+
+camera.position.set(0, 20, 80);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(devicePixelRatio);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(10, 20, 20);
+scene.add(dirLight);
+
+// ----------------------
+// Spiral Data
+// ----------------------
+
+const elements = [
+"H","He","Li","Be","B","C","N","O","F","Ne",
+"Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca",
+"Sc","Ti","V","Cr","Mn","Fe","Co","Ni","Cu","Zn",
+"Ga","Ge","As","Se","Br","Kr","Rb","Sr","Y","Zr",
+"Nb","Mo","Tc","Ru","Rh","Pd","Ag","Cd","In","Sn",
+"Sb","Te","I","Xe"
+];
+
+const group = new THREE.Group();
+scene.add(group);
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+const spheres = [];
+
+const sphereGeo = new THREE.SphereGeometry(1.2, 24, 24);
+
+function colorFromIndex(i) {
+  const hue = (i * 17) % 360;
+  return new THREE.Color(`hsl(${hue}, 85%, 60%)`);
+}
+
+for (let i = 0; i < elements.length; i++) {
+
+  // Spiral equation
+  const angle = i * 0.48;
+  const radius = 4 + i * 0.42;
+  const y = (i - elements.length / 2) * 0.65;
+
+  const x = Math.cos(angle) * radius;
+  const z = Math.sin(angle) * radius;
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: colorFromIndex(i),
+    emissive: 0x111111,
+    roughness: 0.3,
+    metalness: 0.4
+  });
+
+  const sphere = new THREE.Mesh(sphereGeo, mat);
+
+  sphere.position.set(x, y, z);
+
+  sphere.userData = {
+    symbol: elements[i],
+    index: i + 1
+  };
+
+  group.add(sphere);
+  spheres.push(sphere);
+
+  // Label
+  const label = makeTextSprite(elements[i]);
+  label.position.copy(sphere.position);
+  label.position.y += 2.2;
+  group.add(label);
+}
+
+// Spiral line
+const curvePoints = [];
+
+for (let i = 0; i < 300; i++) {
+  const t = i * 0.18;
+  const radius = 4 + i * 0.075;
+  const y = (i - 150) * 0.12;
+
+  curvePoints.push(
+    new THREE.Vector3(
+      Math.cos(t) * radius,
+      y,
+      Math.sin(t) * radius
+    )
+  );
+}
+
+const curve = new THREE.CatmullRomCurve3(curvePoints);
+
+const tubeGeo = new THREE.TubeGeometry(curve, 400, 0.12, 8, false);
+
+const tubeMat = new THREE.MeshStandardMaterial({
+  color: 0x88ccff,
+  emissive: 0x224466,
+  transparent: true,
+  opacity: 0.65
+});
+
+const tube = new THREE.Mesh(tubeGeo, tubeMat);
+scene.add(tube);
+
+// ----------------------
+// Text Sprite
+// ----------------------
+
+function makeTextSprite(message) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  canvas.width = 256;
+  canvas.height = 128;
+
+  ctx.fillStyle = 'white';
+  ctx.font = '48px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(message, 128, 72);
+
+  const texture = new THREE.CanvasTexture(canvas);
+
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true
+  });
+
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(4, 2, 1);
+
+  return sprite;
+}
+
+// ----------------------
+// Hover interaction
+// ----------------------
+
+window.addEventListener('mousemove', (event) => {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  controls.update();
+
+  group.rotation.y += 0.001;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects(spheres);
+
+  spheres.forEach(s => {
+    s.scale.set(1,1,1);
+    s.material.emissive.setHex(0x111111);
+  });
+
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+
+    obj.scale.set(1.4,1.4,1.4);
+    obj.material.emissive.setHex(0x444444);
+
+    document.title =
+      `${obj.userData.symbol} (#${obj.userData.index})`;
+  }
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// ----------------------
+// Resize
+// ----------------------
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
