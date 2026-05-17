@@ -1,0 +1,450 @@
+<h2 class="sr-only">Walter Russell's periodic table rendered as an interactive 3D spire — nine cosmic octaves with elements arranged around a central axis of inert gases. Drag to rotate, scroll to zoom, click any element to read its tone and octave.</h2>
+
+<div style="position: relative; width: 100%; padding: 0;">
+<div id="russell-shell" style="position: relative; width: 100%; aspect-ratio: 680/640; background: #07070d; border-radius: var(--border-radius-lg); overflow: hidden; border: 0.5px solid var(--color-border-tertiary);">
+
+<canvas id="russell-canvas" style="position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none;"></canvas>
+
+<div style="position: absolute; top: 18px; left: 20px; pointer-events: none; max-width: 240px;">
+<div style="font-size: 11px; color: rgba(255,255,255,0.45); letter-spacing: 0.14em; text-transform: uppercase;">walter russell</div>
+<div style="font-size: 17px; font-weight: 500; color: rgba(255,255,255,0.92); margin-top: 4px; font-family: var(--font-serif);">Periodic spire</div>
+<div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 4px;">nine octaves of creation</div>
+</div>
+
+<div id="russell-controls" style="position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+<button id="rs-btn-rotate" type="button" style="background: rgba(255,255,255,0.06); border: 0.5px solid rgba(255,255,255,0.18); color: rgba(255,255,255,0.85); padding: 6px 12px; font-size: 11px; border-radius: var(--border-radius-md); cursor: pointer; letter-spacing: 0.04em;">auto-rotate · on</button>
+<button id="rs-btn-reset" type="button" style="background: rgba(255,255,255,0.06); border: 0.5px solid rgba(255,255,255,0.18); color: rgba(255,255,255,0.85); padding: 6px 12px; font-size: 11px; border-radius: var(--border-radius-md); cursor: pointer; letter-spacing: 0.04em;">reset view</button>
+<button id="rs-btn-spokes" type="button" style="background: rgba(255,255,255,0.06); border: 0.5px solid rgba(255,255,255,0.18); color: rgba(255,255,255,0.85); padding: 6px 12px; font-size: 11px; border-radius: var(--border-radius-md); cursor: pointer; letter-spacing: 0.04em;">spokes · on</button>
+</div>
+
+<div id="russell-info" style="position: absolute; left: 18px; right: 18px; bottom: 16px; pointer-events: none; min-height: 70px;">
+<div style="font-size: 12px; color: rgba(255,255,255,0.42); font-style: italic;">drag to rotate · scroll to zoom · click any element</div>
+</div>
+
+</div>
+</div>
+
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script>
+(function(){
+  const OCTAVES = [
+    { n:1, label:'I', y:-7.0, r:0.4, color:'#A78BFA',
+      center:{ sym:'α', name:'Alphanon', note:'Source of the cosmic octave — Russell\'s undifferentiated zero point from which all matter unfolds.' },
+      elements:[] },
+    { n:2, label:'II', y:-5.4, r:1.0, color:'#818CF8',
+      center:{ sym:'β', name:'Betanon', note:'The first paired octave — the inert center balancing hydrogen with its tonal mate.' },
+      elements:[
+        { sym:'H', name:'Hydrogen', note:'Tone 1 of octave 2 — the first sounded note of physical creation.' }
+      ] },
+    { n:3, label:'III', y:-3.8, r:1.8, color:'#60A5FA',
+      center:{ sym:'He', name:'Helium', note:'Inert center — perfect equilibrium of the helium octave, the still point between tones.' },
+      elements:[
+        { sym:'Li', name:'Lithium', note:'First tone, descending side of the helium octave.' },
+        { sym:'Be', name:'Beryllium' },
+        { sym:'B',  name:'Boron' },
+        { sym:'C',  name:'Carbon', apex:true, note:'Apex of the helium octave — the most stable, crystallizing element. Russell saw carbon as the balance point of the cosmic sound wave.' },
+        { sym:'N',  name:'Nitrogen' },
+        { sym:'O',  name:'Oxygen' },
+        { sym:'F',  name:'Fluorine', note:'Final tone — completion before the inert close.' }
+      ] },
+    { n:4, label:'IV', y:-2.2, r:2.6, color:'#22D3EE',
+      center:{ sym:'Ne', name:'Neon', note:'Inert center of the neon octave — the second crystallized equilibrium.' },
+      elements:[
+        { sym:'Na', name:'Sodium' }, { sym:'Mg', name:'Magnesium' },
+        { sym:'Al', name:'Aluminum' },
+        { sym:'Si', name:'Silicon', apex:true, note:'Apex of the neon octave — silicon mirrors carbon\'s role one octave up.' },
+        { sym:'P', name:'Phosphorus' }, { sym:'S', name:'Sulfur' },
+        { sym:'Cl', name:'Chlorine' }
+      ] },
+    { n:5, label:'V', y:-0.6, r:3.4, color:'#34D399',
+      center:{ sym:'Ar', name:'Argon', note:'Inert center of the argon octave — transitional metals emerge between the tonic notes.' },
+      elements:[
+        { sym:'K', name:'Potassium' }, { sym:'Ca', name:'Calcium' },
+        { sym:'Sc', name:'Scandium' }, { sym:'Ti', name:'Titanium' },
+        { sym:'V', name:'Vanadium' }, { sym:'Cr', name:'Chromium' },
+        { sym:'Mn', name:'Manganese' },
+        { sym:'Fe', name:'Iron', apex:true, note:'Apex of the argon octave — peak metallic expression, the magnetic heart of the spire.' },
+        { sym:'Co', name:'Cobalt' }, { sym:'Ni', name:'Nickel' },
+        { sym:'Cu', name:'Copper' }, { sym:'Zn', name:'Zinc' },
+        { sym:'Ga', name:'Gallium' }, { sym:'Ge', name:'Germanium' },
+        { sym:'As', name:'Arsenic' }, { sym:'Se', name:'Selenium' },
+        { sym:'Br', name:'Bromine' }
+      ] },
+    { n:6, label:'VI', y:1.0, r:3.8, color:'#FBBF24',
+      center:{ sym:'Kr', name:'Krypton', note:'Inert center of the krypton octave — the widest ring of the spire.' },
+      elements:[
+        { sym:'Rb', name:'Rubidium' }, { sym:'Sr', name:'Strontium' },
+        { sym:'Y', name:'Yttrium' }, { sym:'Zr', name:'Zirconium' },
+        { sym:'Nb', name:'Niobium' }, { sym:'Mo', name:'Molybdenum' },
+        { sym:'Tc', name:'Technetium' },
+        { sym:'Ru', name:'Ruthenium', apex:true, note:'Apex of the krypton octave — the noble metals begin to appear here.' },
+        { sym:'Rh', name:'Rhodium' }, { sym:'Pd', name:'Palladium' },
+        { sym:'Ag', name:'Silver' }, { sym:'Cd', name:'Cadmium' },
+        { sym:'In', name:'Indium' }, { sym:'Sn', name:'Tin' },
+        { sym:'Sb', name:'Antimony' }, { sym:'Te', name:'Tellurium' },
+        { sym:'I',  name:'Iodine' }
+      ] },
+    { n:7, label:'VII', y:2.6, r:3.5, color:'#F97316',
+      center:{ sym:'Xe', name:'Xenon', note:'Inert center of the xenon octave — the lanthanide series unfolds within this tone.' },
+      elements:[
+        { sym:'Cs', name:'Cesium' }, { sym:'Ba', name:'Barium' },
+        { sym:'La', name:'Lanthanum' }, { sym:'Ce', name:'Cerium' },
+        { sym:'Pr', name:'Praseodymium' }, { sym:'Nd', name:'Neodymium' },
+        { sym:'Pm', name:'Promethium' }, { sym:'Sm', name:'Samarium' },
+        { sym:'Eu', name:'Europium' },
+        { sym:'Gd', name:'Gadolinium', apex:true, note:'Apex of the xenon octave — magnetic center of the rare earths.' },
+        { sym:'Tb', name:'Terbium' }, { sym:'Dy', name:'Dysprosium' },
+        { sym:'Ho', name:'Holmium' }, { sym:'Er', name:'Erbium' },
+        { sym:'Tm', name:'Thulium' }, { sym:'Yb', name:'Ytterbium' },
+        { sym:'Lu', name:'Lutetium' }, { sym:'Hf', name:'Hafnium' },
+        { sym:'Ta', name:'Tantalum' }, { sym:'W',  name:'Tungsten' },
+        { sym:'Re', name:'Rhenium' }, { sym:'Os', name:'Osmium' },
+        { sym:'Ir', name:'Iridium' }, { sym:'Pt', name:'Platinum' },
+        { sym:'Au', name:'Gold' }, { sym:'Hg', name:'Mercury' },
+        { sym:'Tl', name:'Thallium' }, { sym:'Pb', name:'Lead' },
+        { sym:'Bi', name:'Bismuth' }, { sym:'Po', name:'Polonium' },
+        { sym:'At', name:'Astatine' }
+      ] },
+    { n:8, label:'VIII', y:4.2, r:2.5, color:'#EF4444',
+      center:{ sym:'Rn', name:'Radon', note:'Inert center of the radon octave — the actinide series, matter returning toward its source.' },
+      elements:[
+        { sym:'Fr', name:'Francium' }, { sym:'Ra', name:'Radium' },
+        { sym:'Ac', name:'Actinium' }, { sym:'Th', name:'Thorium' },
+        { sym:'Pa', name:'Protactinium' }, { sym:'U',  name:'Uranium' },
+        { sym:'Np', name:'Neptunium' }, { sym:'Pu', name:'Plutonium' },
+        { sym:'Am', name:'Americium' },
+        { sym:'Cm', name:'Curium', apex:true, note:'Apex of the radon octave — the last stable tone before the spire returns to source.' },
+        { sym:'Bk', name:'Berkelium' }, { sym:'Cf', name:'Californium' },
+        { sym:'Es', name:'Einsteinium' }, { sym:'Fm', name:'Fermium' },
+        { sym:'Md', name:'Mendelevium' }, { sym:'No', name:'Nobelium' },
+        { sym:'Lr', name:'Lawrencium' }
+      ] },
+    { n:9, label:'IX', y:5.8, r:0.4, color:'#EC4899',
+      center:{ sym:'Ω', name:'Omeganon', note:'Return to source — the closing inert tone where Russell\'s cosmic cycle completes and begins again.' },
+      elements:[] }
+  ];
+
+  const canvas = document.getElementById('russell-canvas');
+  const shell = document.getElementById('russell-shell');
+  const infoEl = document.getElementById('russell-info');
+
+  function dims(){
+    const r = shell.getBoundingClientRect();
+    return { w: Math.max(1, r.width), h: Math.max(1, r.height) };
+  }
+
+  let { w, h } = dims();
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x07070d);
+  scene.fog = new THREE.Fog(0x07070d, 18, 48);
+
+  const camera = new THREE.PerspectiveCamera(38, w/h, 0.1, 100);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+  const key = new THREE.PointLight(0xffffff, 1.4, 60);
+  key.position.set(10, 8, 12);
+  scene.add(key);
+  const fill = new THREE.PointLight(0x6688ff, 0.7, 40);
+  fill.position.set(-10, -4, -8);
+  scene.add(fill);
+  const rim = new THREE.PointLight(0xff88cc, 0.5, 40);
+  rim.position.set(0, 12, -10);
+  scene.add(rim);
+
+  const root = new THREE.Group();
+  scene.add(root);
+
+  const axisLen = 14.5;
+  const axisGeom = new THREE.CylinderGeometry(0.025, 0.025, axisLen, 8);
+  const axisMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.32 });
+  const axis = new THREE.Mesh(axisGeom, axisMat);
+  axis.position.y = (-7.0 + 5.8) / 2;
+  root.add(axis);
+
+  const starGeom = new THREE.BufferGeometry();
+  const starCount = 700;
+  const starPos = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i++){
+    const rr = 28 + Math.random() * 18;
+    const t = Math.random() * Math.PI * 2;
+    const p = Math.acos(2 * Math.random() - 1);
+    starPos[i*3]   = rr * Math.sin(p) * Math.cos(t);
+    starPos[i*3+1] = rr * Math.cos(p);
+    starPos[i*3+2] = rr * Math.sin(p) * Math.sin(t);
+  }
+  starGeom.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  const stars = new THREE.Points(starGeom, new THREE.PointsMaterial({ color: 0xffffff, size: 0.06, transparent: true, opacity: 0.55, sizeAttenuation: true }));
+  scene.add(stars);
+
+  const meshes = [];
+  const spokeLines = [];
+
+  function makeLabelSprite(text, color){
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 96;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0,0,256,96);
+    ctx.font = '500 56px ui-sans-serif, system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = color || 'rgba(255,255,255,0.7)';
+    ctx.fillText(text, 128, 48);
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 4;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.7, depthWrite: false });
+    const s = new THREE.Sprite(mat);
+    return s;
+  }
+
+  OCTAVES.forEach((oct, oi) => {
+    const baseColor = new THREE.Color(oct.color);
+
+    const cgeom = new THREE.SphereGeometry(0.34, 36, 36);
+    const cmat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: baseColor,
+      emissiveIntensity: 0.85,
+      metalness: 0.25,
+      roughness: 0.4
+    });
+    const csphere = new THREE.Mesh(cgeom, cmat);
+    csphere.position.set(0, oct.y, 0);
+    csphere.userData = { type:'center', octave: oct, data: oct.center, baseE: 0.85, baseScale: 1 };
+    root.add(csphere);
+    meshes.push(csphere);
+
+    if (oct.r > 0.5){
+      const ringGeom = new THREE.TorusGeometry(oct.r, 0.012, 6, 128);
+      const ringMat = new THREE.MeshBasicMaterial({ color: baseColor, transparent: true, opacity: 0.22 });
+      const ring = new THREE.Mesh(ringGeom, ringMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = oct.y;
+      root.add(ring);
+    }
+
+    const spoke = makeLabelSprite(oct.label, 'rgba(255,255,255,0.55)');
+    spoke.position.set(oct.r + 0.85, oct.y, 0);
+    spoke.scale.set(0.7, 0.27, 1);
+    root.add(spoke);
+
+    const n = oct.elements.length;
+    oct.elements.forEach((el, i) => {
+      const angle = (i / Math.max(1, n)) * Math.PI * 2 + oi * 0.22;
+      const x = Math.cos(angle) * oct.r;
+      const z = Math.sin(angle) * oct.r;
+
+      const size = el.apex ? 0.20 : 0.14;
+      const geom = new THREE.SphereGeometry(size, 28, 28);
+      const baseE = el.apex ? 0.75 : 0.42;
+      const mat = new THREE.MeshStandardMaterial({
+        color: baseColor,
+        emissive: baseColor,
+        emissiveIntensity: baseE,
+        metalness: 0.45,
+        roughness: 0.32
+      });
+      const sphere = new THREE.Mesh(geom, mat);
+      sphere.position.set(x, oct.y, z);
+      sphere.userData = { type:'element', octave: oct, data: el, baseE, baseScale: 1 };
+      root.add(sphere);
+      meshes.push(sphere);
+
+      const spokeGeom = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, oct.y, 0),
+        new THREE.Vector3(x, oct.y, z)
+      ]);
+      const spokeMat = new THREE.LineBasicMaterial({ color: baseColor, transparent: true, opacity: 0.13 });
+      const line = new THREE.Line(spokeGeom, spokeMat);
+      root.add(line);
+      spokeLines.push(line);
+
+      const symSprite = makeLabelSprite(el.sym, 'rgba(255,255,255,0.78)');
+      const outR = oct.r + 0.55;
+      symSprite.position.set(Math.cos(angle) * outR, oct.y, Math.sin(angle) * outR);
+      const sw = Math.max(0.4, Math.min(0.55, el.sym.length * 0.16 + 0.22));
+      symSprite.scale.set(sw, 0.22, 1);
+      symSprite.material.opacity = 0.75;
+      root.add(symSprite);
+    });
+  });
+
+  let camTheta = 0.55;
+  let camPhi = 1.42;
+  let camDist = 19;
+  const lookTarget = new THREE.Vector3(0, -0.4, 0);
+  const initial = { theta: camTheta, phi: camPhi, dist: camDist };
+
+  function updateCamera(){
+    const sp = Math.sin(camPhi);
+    camera.position.x = sp * Math.sin(camTheta) * camDist;
+    camera.position.y = Math.cos(camPhi) * camDist + lookTarget.y;
+    camera.position.z = sp * Math.cos(camTheta) * camDist;
+    camera.lookAt(lookTarget);
+  }
+  updateCamera();
+
+  let dragging = false;
+  let dragMoved = false;
+  let lastX = 0, lastY = 0;
+  let autoRotate = true;
+  let showSpokes = true;
+
+  function setPtrCapture(e){
+    try { canvas.setPointerCapture(e.pointerId); } catch(_){}
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    dragMoved = false;
+    lastX = e.clientX; lastY = e.clientY;
+    setPtrCapture(e);
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging){ handleHover(e); return; }
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
+    camTheta -= dx * 0.008;
+    camPhi   -= dy * 0.006;
+    camPhi = Math.max(0.25, Math.min(Math.PI - 0.25, camPhi));
+    lastX = e.clientX; lastY = e.clientY;
+    updateCamera();
+  });
+
+  function endDrag(e){
+    if (!dragging) return;
+    dragging = false;
+    if (!dragMoved){
+      handleClick(e);
+    }
+  }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('pointerleave', () => { dragging = false; });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    camDist *= 1 + e.deltaY * 0.0012;
+    camDist = Math.max(8, Math.min(38, camDist));
+    updateCamera();
+  }, { passive: false });
+
+  const raycaster = new THREE.Raycaster();
+  const mouseVec = new THREE.Vector2();
+  let hovered = null;
+  let selected = null;
+
+  function pickAt(clientX, clientY){
+    const rect = canvas.getBoundingClientRect();
+    mouseVec.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    mouseVec.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouseVec, camera);
+    const hits = raycaster.intersectObjects(meshes, false);
+    return hits.length ? hits[0].object : null;
+  }
+
+  function resetMesh(m){
+    if (!m) return;
+    m.material.emissiveIntensity = m.userData.baseE;
+    m.scale.setScalar(m.userData.baseScale);
+  }
+
+  function handleHover(e){
+    const hit = pickAt(e.clientX, e.clientY);
+    if (hovered && hovered !== hit && hovered !== selected){
+      resetMesh(hovered);
+    }
+    hovered = hit;
+    if (hit && hit !== selected){
+      hit.material.emissiveIntensity = Math.min(1.6, hit.userData.baseE + 0.6);
+      hit.scale.setScalar(1.35);
+      canvas.style.cursor = 'pointer';
+    } else if (!hit){
+      canvas.style.cursor = dragging ? 'grabbing' : 'grab';
+    }
+  }
+
+  function handleClick(e){
+    const hit = pickAt(e.clientX, e.clientY);
+    if (!hit) return;
+    if (selected) resetMesh(selected);
+    selected = hit;
+    selected.userData.baseScale = 1.5;
+    selected.material.emissiveIntensity = Math.min(1.8, selected.userData.baseE + 0.9);
+    selected.scale.setScalar(1.5);
+
+    const d = hit.userData.data;
+    const oct = hit.userData.octave;
+    const isCenter = hit.userData.type === 'center';
+    let badge;
+    if (isCenter)       badge = 'inert center · octave ' + oct.n;
+    else if (d.apex)    badge = 'apex tone · octave ' + oct.n;
+    else                badge = 'tone · octave ' + oct.n;
+
+    infoEl.innerHTML =
+      '<div style="display:flex; align-items:flex-start; gap:14px;">' +
+        '<div style="font-size:34px; font-weight:500; color:' + oct.color + '; line-height:1; min-width:48px; font-family:var(--font-serif);">' + d.sym + '</div>' +
+        '<div style="flex:1; min-width:0;">' +
+          '<div style="font-size:15px; font-weight:500; color:rgba(255,255,255,0.95);">' + d.name + '</div>' +
+          '<div style="font-size:10.5px; color:rgba(255,255,255,0.5); letter-spacing:0.1em; text-transform:uppercase; margin-top:3px;">' + badge + '</div>' +
+          (d.note ? '<div style="font-size:12px; color:rgba(255,255,255,0.68); margin-top:8px; line-height:1.55;">' + d.note + '</div>' : '') +
+        '</div>' +
+      '</div>';
+  }
+
+  const btnRot = document.getElementById('rs-btn-rotate');
+  btnRot.addEventListener('click', () => {
+    autoRotate = !autoRotate;
+    btnRot.textContent = 'auto-rotate · ' + (autoRotate ? 'on' : 'off');
+    btnRot.style.color = autoRotate ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.5)';
+  });
+
+  document.getElementById('rs-btn-reset').addEventListener('click', () => {
+    camTheta = initial.theta;
+    camPhi = initial.phi;
+    camDist = initial.dist;
+    updateCamera();
+  });
+
+  const btnSpokes = document.getElementById('rs-btn-spokes');
+  btnSpokes.addEventListener('click', () => {
+    showSpokes = !showSpokes;
+    spokeLines.forEach(l => l.visible = showSpokes);
+    btnSpokes.textContent = 'spokes · ' + (showSpokes ? 'on' : 'off');
+    btnSpokes.style.color = showSpokes ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.5)';
+  });
+
+  function onResize(){
+    const d = dims();
+    camera.aspect = d.w / d.h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(d.w, d.h, false);
+  }
+  window.addEventListener('resize', onResize);
+  if (window.ResizeObserver){
+    new ResizeObserver(onResize).observe(shell);
+  }
+
+  let t0 = performance.now();
+  function animate(){
+    const t = (performance.now() - t0) / 1000;
+    if (autoRotate && !dragging){
+      camTheta += 0.0028;
+      updateCamera();
+    }
+    stars.rotation.y = t * 0.012;
+    if (selected){
+      const pulse = 1.5 + Math.sin(t * 2.4) * 0.12;
+      selected.scale.setScalar(pulse);
+    }
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+</script>
