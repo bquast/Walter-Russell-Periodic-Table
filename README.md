@@ -1,5 +1,9 @@
 # Walter Russell Period Table
 
+## Grok
+
+<https://bquast.github.io/Walter-Russell-Periodic-Table/grok-spiral.html
+
 ## Gemini
 
 <https://bquast.github.io/Walter-Russell-Periodic-Table/walter-russell.html>
